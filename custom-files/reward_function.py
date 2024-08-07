@@ -1,33 +1,76 @@
+import math
+
+# Description
+""" The function is used to create a line between two points in x-y coordinates,
+    the points of line will be separated by the difference of distance parameter."""
+
+# Parameters:
+# x1: x coordinate of starting point
+# y1: y coordinate of starting point
+# x2: x coordinate of ending point
+# y2: y coordinate of ending point
+# distance: distance between points of lines
+
+def get_line_points(x1, y1, x2, y2, distance=0.1):
+    dx = x2 - x1
+    dy = y2 - y1
+    line_length = math.sqrt(dx ** 2 + dy ** 2)
+    num_points = int(line_length / distance) + 1
+    x_steps = dx / (num_points - 1)
+    y_steps = dy / (num_points - 1)
+    line_points = [(x1 + i * x_steps, y1 + i * y_steps) for i in range(num_points)]
+    return line_points
+
+
+# Description:
+""" This function takes the current waypoint and find the next three waypoints."""
+
+# Parameters:
+# params: The dictionary of AWS from AWS
+
+def find_next_three_waypoints(params):
+    waypoints = params['waypoints']
+    next_points = (list(range(params['closest_waypoint'][1], params['closest_waypoint'][1] + 3)))
+    for i in range(len(next_points)):
+        if next_points[i] > len(waypoints):
+            next_points[i] -= len(waypoints)
+    return next_points
+
+
 def reward_function(params):
-    '''
-    Example of penalize steering, which helps mitigate zig-zag behaviors
-    '''
-    
-    # Read input parameters
-    distance_from_center = params['distance_from_center']
-    track_width = params['track_width']
-    steering = abs(params['steering_angle']) # Only need the absolute steering angle
+    # Get all waypoints
+    waypoints = params['waypoints']
+    reward = 1
+    # Get current position
+    x = params['x']
+    y = params['y']
 
-    # Calculate 3 marks that are farther and father away from the center line
-    marker_1 = 0.1 * track_width
-    marker_2 = 0.25 * track_width
-    marker_3 = 0.5 * track_width
+    next_points = find_next_three_waypoints(params)
 
-    # Give higher reward if the car is closer to center line and vice versa
-    if distance_from_center <= marker_1:
-        reward = 1
-    elif distance_from_center <= marker_2:
-        reward = 0.5
-    elif distance_from_center <= marker_3:
-        reward = 0.1
-    else:
-        reward = 1e-3  # likely crashed/ close to off track
+    # Get Destination coordinates
+    x_forward = waypoints[next_points[2]][0]
+    y_forward = waypoints[next_points[2]][1]
 
-    # Steering penality threshold, change the number based on your action space setting
-    ABS_STEERING_THRESHOLD = 15
+    optimal_path = get_line_points(x, y, x_forward, y_forward)
 
-    # Penalize reward if the car is steering too much
-    if steering > ABS_STEERING_THRESHOLD:
-        reward *= 0.8
+    # Calculate reward for alignment with optimal steering direction
+    heading = params['heading']
+    optimal_heading = math.degrees(math.atan2(y_forward - y, x_forward - x))
+    heading_diff = abs(optimal_heading - heading)
+    if heading_diff > 180:
+        heading_diff = 360 - heading_diff
+    reward_alignment = math.cos(math.radians(heading_diff))
+    reward+=reward_alignment
+    # Optimal speed based on curvature
+    min_speed, max_speed = 1, 4
+    # Changed to continuous function for optimal speed calculation
+    optimal_speed = max_speed - (optimal_heading / 180) * (max_speed - min_speed)
 
-    return float(reward)
+    # Calculate reward for speed
+    speed_diff = abs(params['speed'] - optimal_speed)
+    reward_speed = math.exp(-0.5 * speed_diff)
+
+    reward+=reward_speed
+
+    # ... perform your operations
+    return reward
