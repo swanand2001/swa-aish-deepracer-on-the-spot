@@ -55,7 +55,7 @@ def reward_function(params):
             direction_bonus = 0
         reward *= direction_bonus
     else:
-        if direction_diff_current == 45 :
+        if direction_diff_current == 0 :
             if speed>=SPEED_THRESHOLD_1:
                 reward+=max(speed,SPEED_THRESHOLD_1)
             else:

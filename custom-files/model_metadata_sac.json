@@ -10,7 +10,7 @@
     }
   },
   "sensor": [
-    "STEREO_CAMERAS"
+    "FRONT_FACING_CAMERA"
   ],
   "neural_network": "DEEP_CONVOLUTIONAL_NETWORK_SHALLOW",
   "version": "5",
